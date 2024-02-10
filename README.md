@@ -64,3 +64,4 @@ Feel free to modify the template based on your project requirements.
 2. Include the file in `scripts/create_project.tcl`.
 3. Do `make clean` (Linux) or delete the `build/` folder.
 4. Rebuild the project.
+"# TFG-Consumo-Memoria-FPGA" 
