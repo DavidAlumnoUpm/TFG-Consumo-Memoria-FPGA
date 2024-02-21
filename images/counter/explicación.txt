@@ -1,0 +1,14 @@
+
+1. En la imagen "proceso completo" se muestra cómo las salidas div y overflow varían 
+ante cambios en las entradas reset, clk, clr, enable, stop y continue. El circuito 
+describe un contador de 100 KHz, en el que overflow sirve para indicar el final de la 
+cuenta, y div toma distintos valores ("00", "01, "10" o "11") en función del momento de
+la cuenta (312.5, 625, 937.5, 1250).
+
+2. En la imagen "proceso detalle", se realiza la cuenta de 1250 (125000000/100000) 8 
+veces seguidas, con el fin de pasar overflow y div a los bloques I2C_scl.vhd y I2C_state.vhd
+y así poder generar secuencias de reloj (SCL) y de estados para poder comunicar 8 bits.
+
+3. En la imagen "caso particular", se realiza esta cuenta de 1250 una única vez con el 
+mismo fin anterior, pero en este caso para estados de un solo ciclo de reloj (START, 
+IDLE, PRESTOP, STOP).
