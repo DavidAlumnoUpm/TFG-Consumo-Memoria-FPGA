@@ -1,134 +1,101 @@
+
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-
 entity tb_I2C_master is
-    generic ( 
-                C_FREQ_SYS   : integer := 125000000;    -- 125 MHz
-                C_FREQ_MAX   : integer := 100000;       -- 100 KHz
-                C_CNT_BITS   : integer := 11;           -- 2^11 >= 125000000 / 100000
-                C_RST_POL    : std_logic := '1';         -- Reset poling                               -- Reset poling
-                DEVICE          : std_logic_vector(7 downto 0) := "01000010"        -- DIRECCI?N DEL DISPOSITIVO 
-    );
+        generic (
+                    C_FREQ_SYS   : integer := 125000000;    -- 125 MHz
+                    C_FREQ_MAX   : integer := 125000;       -- 125 KHz en SCL   
+                    C_CNT_BITS   : integer := 8;            -- 2^8 >= 125000000 / 125000 / 4   
+                    DEVICE      : std_logic_vector(6 downto 0) := "1010101";
+                    ADDRESS     : std_logic_vector(7 downto 0) := "10101010";
+                    DATA        : std_logic_vector(7 downto 0) := "11001010"        
+        );
 end tb_I2C_master;
 
 architecture Behavioral of tb_I2C_master is
 
-     constant CLK_PERIOD : time := 8 ns; -- 125 MHz
-     signal clk, reset, clr, enable, SDA, SCL, NACK, STOP_ACK, OPERA, READ, WRITE : std_logic;
-     signal ADDRESS, DATA_IN, DATA_OUT : std_logic_vector(7 downto 0);
-     
+    constant CLK_PERIOD : time := 8 ns; -- 125 MHz
+    signal clk, reset, clr, enable, ON_OFF, R_W, ACK, SDA, SCL     : std_logic;
+    signal data_out     : std_logic_vector(7 downto 0);
+
 begin
 
-    uut: entity work.I2C_master(Behavioral)
+    I2C_master : entity work.I2C_master
         generic map(
-                        C_FREQ_SYS  => C_FREQ_SYS,
-                        C_FREQ_MAX  => C_FREQ_MAX,
-                        C_CNT_BITS  => C_CNT_BITS,
-                        C_RST_POL   => C_RST_POL,
-                        DEVICE      => DEVICE
+                    C_FREQ_SYS  => C_FREQ_SYS,
+                    C_FREQ_MAX  => C_FREQ_MAX,
+                    C_CNT_BITS  => C_CNT_BITS,
+                    DEVICE      => DEVICE,
+                    ADDRESS     => ADDRESS,
+                    DATA        => DATA
         )
         port map(
-                        clk         => clk,
-                        reset       => reset,
-                        clr         => clr,
-                        enable      => enable,
-                        SDA         => SDA,
-                        SCL         => SCL,
-                        ADDRESS     => ADDRESS,
-                        DATA_IN     => DATA_IN,
-                        DATA_OUT    => DATA_OUT,
-                        NACK        => NACK,
-                        STOP_ACK    => STOP_ACK,
-                        READ        => READ,
-                        OPERA       => OPERA,
-                        WRITE       => WRITE
+                    clk         => clk,
+                    reset       => reset,
+                    clr         => clr,
+                    enable      => enable,
+                    ON_OFF      => ON_OFF,
+                    R_W         => R_W,
+                    ACK         => ACK,
+                    SDA         => SDA,
+                    SCL         => SCL,
+                    data_out    => data_out
         );
         
     clk_stimuli : process
-    begin
-        clk <= '1';
-        wait for CLK_PERIOD/2;
-        clk <= '0';
-        wait for CLK_PERIOD/2;
-    end process;
+        begin
+            clk <= '1';
+            wait for CLK_PERIOD/2;
+            clk <= '0';
+            wait for CLK_PERIOD/2;
+        end process;
+    
+    I2C_stimuli : process
+        begin
+            reset <= '1';
+            clr <= '0';
+            enable <= '0';
+            ON_OFF <= '0';
+            R_W <= '0';
+            ACK <= '0';
+            SDA <= 'Z';
+            wait for 1 us;
             
-    uut_stimuli: process
-    begin
-        
-        -- Señales de inicio
-        reset <= '1';
-        clr <= '0';
-        enable <= '0';
-        SDA <= 'Z';
-        ADDRESS <= "00110101";
-        DATA_IN <= "10110100";
-        STOP_ACK <= '0';
-        READ <= '0';
-        OPERA <= '0';
-        WRITE <= '0';
-        
-        -- Puesta en marcha
-        wait for 1 us;
-        reset <= '0';
-        wait for 1 us;
-        enable <= '1';
-        WRITE <= '1';
-        wait for 1 us;
-        OPERA <= '1';
-        wait for 1 us;
-        OPERA <= '0';
-        
-        -- Operación de Escritura
-        wait for 83 us;
-        SDA <= '0';
-        wait for 10 us;
-        SDA <= 'Z';
-        wait for 80 us;
-        SDA <= '0';
-        wait for 10 us;
-        SDA <= 'Z';
-        wait for 80 us;
-        SDA <= '0';
-        wait for 10 us;
-        SDA <= 'Z';
-        
-        -- Operación de Lectura
-        wait for 10 us;
-        WRITE <= '0';
-        READ <= '1';
-        wait for 10 us;
-        OPERA <= '1';
-        wait for 5 us;
-        OPERA <= '0';
-        wait for 78 us;
-        SDA <= '0';
-        wait for 10 us;
-        SDA <= 'Z';
-        wait for 80 us;
-        SDA <= '0';
-        wait for 10 us;
-        -- Lectura 8 bits
-        SDA <= '1';
-        wait for 10 us;
-        SDA <= '0';  
-        wait for 10 us;
-        SDA <= '1';
-        wait for 10 us;
-        SDA <= '0';  
-        wait for 10 us;
-        SDA <= '1';
-        wait for 10 us;
-        SDA <= '0';  
-        wait for 10 us;
-        SDA <= '1';
-        wait for 10 us;
-        SDA <= '0';  
-        wait for 10 us;                              
-        SDA <= 'Z';        
-        
-        wait;
-    end process;
+            reset <= '0';
+            enable <= '1';
+            wait for 10 ns;
+            
+            ON_OFF <= '1';
+            wait for 10 ns;
+            ON_OFF <= '0';
+            
+            wait for 250 us;
+            R_W <= '1';
+            wait for 1 us;
+            ON_OFF <= '1';
+            wait for 10 ns;
+            ON_OFF <= '0';
+            wait for 154 us;      
+            SDA <= '1';
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us;
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= 'Z';             
+            wait;
+    end process;        
 
 end Behavioral;
