@@ -8,15 +8,19 @@ entity tb_I2C_master is
                     C_FREQ_SYS   : integer := 125000000;    -- 125 MHz
                     C_FREQ_MAX   : integer := 125000;       -- 125 KHz en SCL    
                     ADDRESS      : std_logic_vector(6 downto 0) := "1010101";
-                    DATA        : std_logic_vector(7 downto 0) := "11001010"        
+                    DATA        : std_logic_vector(15 downto 0) := "1100101011110000";
+                    BYTES_W     : integer := 2;
+                    BYTES_R     : integer := 4;
+                    N_BITS_W    : integer := 23; -- Ajuste para escritura de 24 bits (8 + 16)
+                    N_BITS_R    : integer := 31  -- Ajuste para lectura de 32 bits (0 + 32)                              
         );
 end tb_I2C_master;
 
 architecture Behavioral of tb_I2C_master is
 
     constant CLK_PERIOD : time := 8 ns; -- 125 MHz
-    signal clk, reset, START, R_W, DONE, SDA, SCL     : std_logic;
-    signal data_r     : std_logic_vector(7 downto 0);
+    signal clk, reset, START, R_W, DONE, SDA, SCL, STOP_ack     : std_logic;
+    signal data_r     : std_logic_vector(N_BITS_R downto 0);
 
 begin
 
@@ -25,7 +29,11 @@ begin
                     C_FREQ_SYS  => C_FREQ_SYS,
                     C_FREQ_MAX  => C_FREQ_MAX,
                     ADDRESS     => ADDRESS,
-                    DATA        => DATA
+                    DATA        => DATA,
+                    BYTES_W     => BYTES_W,
+                    BYTES_R     => BYTES_R,
+                    N_BITS_W    => N_BITS_W,
+                    N_BITS_R    => N_BITS_R
         )
         port map(
                     clk     => clk,
@@ -35,6 +43,7 @@ begin
                     DONE    => DONE,
                     SDA     => SDA,
                     SCL     => SCL,
+                    STOP_ack=> STOP_ack,
                     data_r  => data_r
         );
         
@@ -83,7 +92,61 @@ begin
             wait for 8 us;
             SDA <= '1';
             wait for 8 us; 
-            SDA <= 'Z';                                  
+            SDA <= 'Z';   
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us;
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us;
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us;
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us; 
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= 'Z';        
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us;
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us;
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us;
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us; 
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= 'Z';  
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us;
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us;
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us;
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= '1';
+            wait for 8 us; 
+            SDA <= '0';
+            wait for 8 us;
+            SDA <= 'Z';                                                             
             wait;
     end process;        
 
