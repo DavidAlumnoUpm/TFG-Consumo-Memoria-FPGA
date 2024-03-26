@@ -5,46 +5,44 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity tb_I2C_master is
         generic (
-                    C_FREQ_SYS   : integer := 125000000;    -- 125 MHz
-                    C_FREQ_MAX   : integer := 125000;       -- 125 KHz en SCL    
-                    ADDRESS      : std_logic_vector(6 downto 0) := "1010101";
-                    DATA        : std_logic_vector(15 downto 0) := "1100101011110000";
-                    BYTES_W     : integer := 2;
-                    BYTES_R     : integer := 4;
-                    N_BITS_W    : integer := 23; -- Ajuste para escritura de 24 bits (8 + 16)
-                    N_BITS_R    : integer := 31  -- Ajuste para lectura de 32 bits (0 + 32)                              
+                    C_FREQ_SYS  : integer := 125000000;    -- 125 MHz
+                    C_FREQ_SCL  : integer := 125000;       -- 125 KHz en SCL    
+                    BYTES_W     : integer := 1;
+                    BYTES_R     : integer := 1                         
         );
 end tb_I2C_master;
 
 architecture Behavioral of tb_I2C_master is
 
-    constant CLK_PERIOD : time := 8 ns; -- 125 MHz
-    signal clk, reset, START, R_W, DONE, SDA, SCL, STOP_ack     : std_logic;
-    signal data_r     : std_logic_vector(N_BITS_R downto 0);
+    constant CLK_PERIOD : time := (1000000000/C_FREQ_SYS)* 1ns; -- 125 MHz
+    constant SCL_PERIOD : time := (1000000/C_FREQ_SCL)* 1us; -- 125 MHz
+    signal clk, reset, START, DONE, SDA, SCL     : std_logic;
+    signal R_W          : std_logic := '1';
+    signal DATA_SLAVE   : std_logic_vector(8*BYTES_R - 1 downto 0) := x"ab";
+    signal DATA_READ    : std_logic_vector(8*BYTES_R - 1 downto 0);
+    signal DATA_IN      : std_logic_vector(8*BYTES_W - 1 downto 0) := x"5d";
+    signal ADDRESS      : std_logic_vector(6 downto 0) := "1010101";
 
 begin
 
     I2C_master : entity work.I2C_master
         generic map(
                     C_FREQ_SYS  => C_FREQ_SYS,
-                    C_FREQ_MAX  => C_FREQ_MAX,
-                    ADDRESS     => ADDRESS,
-                    DATA        => DATA,
+                    C_FREQ_SCL  => C_FREQ_SCL,
                     BYTES_W     => BYTES_W,
-                    BYTES_R     => BYTES_R,
-                    N_BITS_W    => N_BITS_W,
-                    N_BITS_R    => N_BITS_R
+                    BYTES_R     => BYTES_R
         )
         port map(
                     clk     => clk,
                     reset   => reset,
                     START   => START,     
                     R_W     => R_W, 
+                    ADDRESS     => ADDRESS,
+                    DATA_IN     => DATA_IN,                   
                     DONE    => DONE,
                     SDA     => SDA,
                     SCL     => SCL,
-                    STOP_ack=> STOP_ack,
-                    data_r  => data_r
+                    DATA_READ  => DATA_READ
         );
         
     clk_stimuli : process
@@ -56,98 +54,41 @@ begin
         end process;
     
     I2C_stimuli : process
-        begin
-            reset <= '1';
-            START <= '0';
-            R_W <= '0';
-            SDA <= 'Z';
-            wait for 1 us;
+    begin
+        reset <= '1';
+        START <= '0';
+        SDA <= 'Z';
+        wait for SCL_PERIOD/8;
             
-            reset <= '0';
-            wait for 1 us;
+        reset <= '0';
+            
+        if R_W = '0' then
+            wait for SCL_PERIOD/8;
             START <= '1';
-            wait for 10 ns;
+            wait for CLK_PERIOD + CLK_PERIOD/4;
             START <= '0';
-            wait for CLK_PERIOD*200*150;
-            R_W <= '1';
-            wait for 1 us;
+            wait;
+        else
+            wait for SCL_PERIOD/8;
             START <= '1';
-            wait for 10 ns;
+            wait for CLK_PERIOD + CLK_PERIOD/4;
             START <= '0'; 
             
-            wait for 82 us;
-            SDA <= '1';
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us;
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us;
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us;
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us; 
-            SDA <= 'Z';   
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us;
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us;
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us;
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us; 
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= 'Z';        
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us;
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us;
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us;
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us; 
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= 'Z';  
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us;
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us;
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us;
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= '1';
-            wait for 8 us; 
-            SDA <= '0';
-            wait for 8 us;
-            SDA <= 'Z';                                                             
+            wait for 10*SCL_PERIOD + SCL_PERIOD/4;
+            
+            for k in 0 to BYTES_R - 1 loop
+                for i in 0 to 6 loop
+                    SDA <= DATA_SLAVE(8*BYTES_R - 1 - i);
+                    wait for SCL_PERIOD;
+                end loop;
+                SDA <= DATA_SLAVE(8*BYTES_R - 8);
+                wait for (SCL_PERIOD*3)/4;
+                DATA_SLAVE <= DATA_SLAVE(8*BYTES_R - 9 downto 0)&DATA_SLAVE(8*BYTES_R - 1 downto 8*BYTES_R - 8); 
+                SDA <= 'Z';   
+                wait for SCL_PERIOD + SCL_PERIOD/4;
+            end loop;                                                           
             wait;
+        end if;
     end process;        
 
 end Behavioral;

@@ -25,7 +25,7 @@ entity I2C_state is
             R_W         : in std_logic; -- WRITE = '0', READ = '1'
             overflow    : in std_logic;
             div         : in std_logic_vector(1 downto 0);
-            STOP_ack    : in std_logic;
+            SDA         : in std_logic;
             DONE        : out std_logic;
             stop_count  : out std_logic;
             stop_scl    : out std_logic;
@@ -41,7 +41,7 @@ end I2C_state;
 architecture Behavioral of I2C_state is
 
     signal FSM  : std_logic_vector(3 downto 0);
-    signal final_scl, stop_scl_aux, stop_count_aux, save, count, final_count, s_ack, clr_cont  : std_logic;
+    signal final_scl, stop_scl_aux, stop_count_aux, save, final_count, s_ack  : std_logic;
     signal cont : unsigned (2 downto 0);
     signal byte_w   : integer range 0 to BYTES_W;
     signal byte_r   : integer range 0 to BYTES_R;
@@ -62,6 +62,7 @@ begin
             zero_sda    <= '0';
             byte_w      <= 0;
             byte_r      <= 0;
+            cont <= (others => '0');
             DONE <= '1';
         elsif clk'event and clk = '1' then
                 if FSM = "0000" then
@@ -74,6 +75,7 @@ begin
                     zero_sda    <= '0';
                     byte_w      <= 0;
                     byte_r      <= 0; 
+                    cont <= (others => '0');
                     DONE <= '1';                   
                     if START = '1' then
                         FSM <= "0001";
@@ -86,6 +88,7 @@ begin
                     s_ack       <= '0';
                     stop_sda    <= '0';
                     zero_sda    <= '1';
+                    cont <= (others => '0');
                     DONE <= '0';
                     if final_scl = '1' then
                         FSM <= "0010";
@@ -99,8 +102,12 @@ begin
                     stop_sda    <= '0';
                     zero_sda    <= '0';
                     DONE <= '0';
-                    if final_count = '1' then
-                        FSM <= "0011";
+                    if final_scl = '1' then
+                        if cont = "111" then
+                            FSM <= "0011";
+                        else
+                            cont <= cont + 1;
+                        end if;
                     end if;  
                 elsif FSM = "0011" then
                     stop_count_aux <= '0';
@@ -110,9 +117,10 @@ begin
                     s_ack       <= '1';
                     stop_sda    <= '0';
                     zero_sda    <= '0'; 
+                    cont <= (others => '0');
                     DONE <= '0';                   
                     if final_scl = '1' then
-                        if STOP_ack = '1' then
+                        if SDA = '1' then
                             FSM <= "0111";
                         elsif R_W = '1' then
                             FSM <= "0101";
@@ -129,29 +137,37 @@ begin
                     stop_sda    <= '0';
                     zero_sda    <= '0'; 
                     DONE <= '0';                   
-                    if final_count = '1' then
-                        byte_w      <= byte_w + 1;
-                        FSM <= "0110";   
+                    if final_scl = '1' then
+                        if cont = "111" then
+                            byte_w      <= byte_w + 1;
+                            FSM <= "0110"; 
+                        else
+                            cont <= cont + 1;    
+                        end if;  
                     end if; 
                 elsif FSM = "0101" then
                     stop_count_aux <= '0';
                     stop_scl_aux <= '0';
-                    sipo        <= '0';
                     sipo        <= '1';
                     piso        <= '0';
                     s_ack       <= '0';
                     stop_sda    <= '0';
                     zero_sda    <= '0';  
-                    DONE <= '0';                  
-                    if final_count = '1' then
-                        byte_r      <= byte_r + 1;
-                        FSM <= "0110";   
+                    DONE <= '0';                
+                    if final_scl = '1' then
+                        if cont = "111" then
+                            byte_r      <= byte_r + 1;
+                            FSM <= "0110";
+                        else
+                            cont <= cont + 1;  
+                        end if; 
                     end if;                    
                 elsif FSM = "0110" then
                     stop_count_aux <= '0';
                     stop_scl_aux <= '0';
                     stop_sda    <= '0';
                     zero_sda    <= '0';
+                    cont <= (others => '0');
                     if R_W = '0' then 
                         sipo        <= '1';
                         piso        <= '0';
@@ -162,7 +178,7 @@ begin
                         end if;
                     else
                         sipo        <= '0';
-                        piso        <= '1';  
+                        piso        <= '1';
                         if byte_r = BYTES_R then
                             DONE <= '1';
                         else
@@ -171,7 +187,7 @@ begin
                     end if;
                     s_ack       <= '1';
                     if final_scl = '1' then
-                        if STOP_ack = '1' then
+                        if SDA = '1' then
                             FSM <= "0111";
                         elsif R_W = '0' and byte_w < BYTES_W then
                             FSM <= "0100";
@@ -191,6 +207,7 @@ begin
                     s_ack       <= '0';
                     stop_sda    <= '0';
                     zero_sda    <= '1';
+                    cont <= (others => '0');
                     DONE <= '1';
                     if final_scl = '1' then
                         FSM <= "1000";
@@ -203,6 +220,7 @@ begin
                     s_ack       <= '0';
                     stop_sda    <= '1';
                     zero_sda    <= '0';
+                    cont <= (others => '0');
                     DONE <= '1';
                     if final_scl = '1' then
                         FSM <= "0000";
@@ -210,31 +228,10 @@ begin
                 end if;                            
             end if;
     end process;
-    
-    -- CONTADOR 0 A 7
-    process(clk,reset)
-    begin
-        if reset = '1' then
-            cont <= (others => '0');
-        elsif clk'event and clk = '1' then
-            if clr_cont = '1' then
-                cont <= (others => '0');
-            else
-                if count = '1' then
-                    if cont = "111" then
-                        cont <= (others => '0');
-                    else
-                        cont <= cont + 1;
-                    end if;
-                end if;
-            end if;
-        end if;
-    end process;
+
     
     ack_s <= s_ack;
-    clr_cont    <= stop_count_aux or s_ack;
-    count <= final_scl and (not stop_scl_aux);
-    final_count <= '1' when count = '1' and cont = "111" else '0';
+    final_count <= '1' when (final_scl = '1' and  stop_scl_aux = '1') and cont = "111" else '0';
     final_scl <= '1' when (overflow = '1' and div = "11") else '0';
     stop_scl <= stop_scl_aux;
     stop_count <= stop_count_aux;
