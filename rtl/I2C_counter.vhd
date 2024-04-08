@@ -72,22 +72,23 @@ begin
     
     
     -- GENERACIÓN SCL
-    SCL_OUT: process (clk,reset)
-    begin
-        if reset = '1' then
-            SCL <= '1';
-        elsif clk'event and clk = '1' then
-            if clr_cont = '1' then
-                SCL <= '1';
-            else
-                if cont_4(1) = '0' then
-                    SCL <= '0';
-                elsif cont_4(1) = '1' then
-                    SCL <= '1';
-                end if;     
-            end if;
-        end if;
-    end process;    
+  --  SCL_OUT: process (clk,reset)
+  --  begin
+       -- if reset = '1' then
+     --       SCL <= '1';
+   --     elsif clk'event and clk = '1' then
+        --    if clr_cont = '1' then
+      --          SCL <= '1';
+    --        else
+               -- if cont_4(1) = '0' then
+             --       SCL <= '0';
+           --     elsif cont_4(1) = '1' then
+         --           SCL <= '1';
+       --         end if;     
+     --       end if;
+   --     end if;
+   -- end process;    
+   SCL <= '0' when cont_4(1) = '0' and reset = '0' and clr_cont = '0' else '1';
     
     -- Reset síncrono del SCL
     clr_cont <= stop_count or stop;

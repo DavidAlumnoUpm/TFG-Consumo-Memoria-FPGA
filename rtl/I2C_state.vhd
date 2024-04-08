@@ -163,8 +163,7 @@ begin
                         end if; 
                     end if;                    
                 elsif FSM = "0110" then
-                    stop_count_aux <= '0';
-                    stop_scl_aux <= '0';
+                    stop_count_aux <= '0';                    
                     stop_sda    <= '0';
                     zero_sda    <= '0';
                     cont <= (others => '0');
@@ -189,6 +188,7 @@ begin
                     if final_scl = '1' then
                         if SDA = '1' then
                             FSM <= "0111";
+                            stop_scl_aux <= '1';
                         elsif R_W = '0' and byte_w < BYTES_W then
                             FSM <= "0100";
                         elsif R_W = '1' and byte_r < BYTES_R then
@@ -197,7 +197,10 @@ begin
                             byte_w <= 0;
                             byte_r <= 0;
                             FSM <= "0111";
+                            stop_scl_aux <= '1';
                         end if;
+                    else
+                        stop_scl_aux <= '0';
                     end if; 
                 elsif FSM = "0111" then
                     stop_count_aux <= '0';
