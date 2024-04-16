@@ -3,7 +3,8 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity I2C_master is
+
+entity TOP_MASTER is
     generic (
             C_FREQ_SYS   : integer := 125000000;    -- 125 MHz
             C_FREQ_SCL   : integer := 125000        -- 125 KHz en SCL                            
@@ -11,27 +12,52 @@ entity I2C_master is
     Port ( 
             clk     : in std_logic;
             reset   : in std_logic;
-            START   : in std_logic;     
-            R_W     : in std_logic; 
+            ON_OFF  : in std_logic;
+            WRITE   : in std_logic; -- I2C write command
+            READ    : in std_logic; -- I2C read command   
+            OPERATION   : in std_logic;  -- '0' = I2C, '1' = PMBUS              
             ADDRESS      : in std_logic_vector(6 downto 0);
-            DATA_IN : in std_logic_vector(7 downto 0);        
-            DONE    : inout std_logic;
+            DATA_INPUT  : in std_logic_vector(7 downto 0); -- Aquí hay que ajustar la longitud del vector (MÚLTIPLE DE 8 - 1 down to 0)
+            DATA_OUTPUT : out std_logic_vector(7 downto 0); -- Aquí hay que ajustar la longitud del vector (MÚLTIPLE DE 8 - 1 down to 0)                  
             SDA     : inout std_logic;
-            SCL     : out std_logic;
-            DATA_READ: out std_logic_vector(7 downto 0);
-            BYTES_W     : in std_logic_vector(3 downto 0);
-            BYTES_R     : in std_logic_vector(3 downto 0)                     
+            SCL     : out std_logic
     );
-end I2C_master;
+end TOP_MASTER;
 
-architecture Behavioral of I2C_master is
+architecture Behavioral of TOP_MASTER is
 
-    signal overflow, stop_count, stop_scl, sipo, piso, ack_s, stop_sda, zero_sda, reading, condition     : std_logic;
+    signal overflow, stop_count, stop_scl, sipo, piso, ack_s, stop_sda, zero_sda, reading, condition, START, R_W, DONE     : std_logic;
     signal div      : std_logic_vector(1 downto 0);
+    signal DATA_IN, DATA_READ  : std_logic_vector(7 downto 0);
+    signal BYTES_W, BYTES_R : std_logic_vector(3 downto 0);
 
 begin
 
-    CONTADOR_125KHz : entity work.I2C_counter
+    OPERATION_CHOOSE : entity work.operation
+        port map(
+            clk         => clk,
+            reset       => reset,
+            ON_OFF      => ON_OFF,
+            stop_count  => stop_count,
+            stop_scl    => stop_scl,
+            WRITE       => WRITE,
+            READ        => READ,
+            OPERATION   => OPERATION,
+            ack_s       => ack_s,
+            DONE        => DONE,
+            div         => div,
+            overflow    => overflow,
+            DATA_INPUT  => DATA_INPUT,
+            DATA_OUTPUT => DATA_OUTPUT,
+            DATA_IN     => DATA_IN,
+            DATA_READ   => DATA_READ,
+            BYTES_W     => BYTES_W,
+            BYTES_R     => BYTES_R,
+            R_W         => R_W,
+            START       => START
+        );
+
+    CONTADOR_125KHz_2 : entity work.I2C_counter
         generic map(
                     C_FREQ_SYS  => C_FREQ_SYS,
                     C_FREQ_SCL  => C_FREQ_SCL
@@ -49,7 +75,7 @@ begin
         );
 
 
-    FSM_1 : entity work.I2C_state(Behavioral)
+    FSM_2 : entity work.I2C_state(Behavioral)
         port map(
             clk         => clk,
             reset       => reset, 
@@ -72,7 +98,7 @@ begin
             BYTES_R     => BYTES_R            
         );
 
-    SDA_GEN : entity work.I2C_datasda(Behavioral)
+    SDA_GEN_2 : entity work.I2C_datasda(Behavioral)
     port map(
         clk         => clk,
         reset       => reset,
@@ -90,6 +116,6 @@ begin
         SDA         => SDA,
         div         => div,
         DATA_READ   => DATA_READ
-    );
+    );    
 
 end Behavioral;

@@ -6,9 +6,7 @@ use IEEE.NUMERIC_STD.ALL;
 entity tb_I2C_master is
         generic (
                     C_FREQ_SYS  : integer := 125000000;    -- 125 MHz
-                    C_FREQ_SCL  : integer := 125000;       -- 125 KHz en SCL    
-                    BYTES_W     : integer := 1;
-                    BYTES_R     : integer := 1                         
+                    C_FREQ_SCL  : integer := 125000        -- 125 KHz en SCL                          
         );
 end tb_I2C_master;
 
@@ -16,21 +14,22 @@ architecture Behavioral of tb_I2C_master is
 
     constant CLK_PERIOD : time := (1000000000/C_FREQ_SYS)* 1ns; -- 125 MHz
     constant SCL_PERIOD : time := (1000000/C_FREQ_SCL)* 1us; -- 125 MHz
-    signal clk, reset, START, DONE, SDA, SCL     : std_logic;
+    signal clk, reset, START, DONE, SDA, SCL   : std_logic;
     signal R_W          : std_logic := '1';
-    signal DATA_SLAVE   : std_logic_vector(8*BYTES_R - 1 downto 0) := x"ab";
-    signal DATA_READ    : std_logic_vector(8*BYTES_R - 1 downto 0);
-    signal DATA_IN      : std_logic_vector(8*BYTES_W - 1 downto 0) := x"5d";
+    signal DATA_SLAVE   : std_logic_vector(7 downto 0) := x"35";
+    signal DATA_READ    : std_logic_vector(7 downto 0);
+    signal DATA_IN      : std_logic_vector(7 downto 0) := x"5d";
     signal ADDRESS      : std_logic_vector(6 downto 0) := "1010101";
+    signal BYTES_W      : std_logic_vector(3 downto 0) := "0010";
+    signal BYTES_R      : std_logic_vector(3 downto 0) := "0010";
+    
 
 begin
 
     I2C_master : entity work.I2C_master
         generic map(
                     C_FREQ_SYS  => C_FREQ_SYS,
-                    C_FREQ_SCL  => C_FREQ_SCL,
-                    BYTES_W     => BYTES_W,
-                    BYTES_R     => BYTES_R
+                    C_FREQ_SCL  => C_FREQ_SCL
         )
         port map(
                     clk     => clk,
@@ -38,11 +37,13 @@ begin
                     START   => START,     
                     R_W     => R_W, 
                     ADDRESS     => ADDRESS,
-                    DATA_IN     => DATA_IN,                   
+                    DATA_IN     => DATA_IN,                 
                     DONE    => DONE,
                     SDA     => SDA,
                     SCL     => SCL,
-                    DATA_READ  => DATA_READ
+                    DATA_READ  => DATA_READ,
+                    BYTES_W     => BYTES_W,
+                    BYTES_R     => BYTES_R                    
         );
         
     clk_stimuli : process
@@ -74,18 +75,17 @@ begin
             wait for CLK_PERIOD + CLK_PERIOD/4;
             START <= '0'; 
             
-            wait for 10*SCL_PERIOD + SCL_PERIOD/4;
+            wait for 9*SCL_PERIOD + 3*SCL_PERIOD/4;
             
-            for k in 0 to BYTES_R - 1 loop
+            for k in 0 to to_integer(unsigned(BYTES_R)) - 1 loop
                 for i in 0 to 6 loop
-                    SDA <= DATA_SLAVE(8*BYTES_R - 1 - i);
+                    SDA <= DATA_SLAVE(7 - i);
                     wait for SCL_PERIOD;
                 end loop;
-                SDA <= DATA_SLAVE(8*BYTES_R - 8);
-                wait for (SCL_PERIOD*3)/4;
-                DATA_SLAVE <= DATA_SLAVE(8*BYTES_R - 9 downto 0)&DATA_SLAVE(8*BYTES_R - 1 downto 8*BYTES_R - 8); 
+                SDA <= DATA_SLAVE(0);
+                wait for SCL_PERIOD;
                 SDA <= 'Z';   
-                wait for SCL_PERIOD + SCL_PERIOD/4;
+                wait for SCL_PERIOD;
             end loop;                                                           
             wait;
         end if;

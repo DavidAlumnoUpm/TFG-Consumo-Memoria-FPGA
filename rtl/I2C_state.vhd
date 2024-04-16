@@ -14,10 +14,6 @@ use IEEE.NUMERIC_STD.ALL;
 -- 1000 - STOP
 
 entity I2C_state is
-    generic(
-            BYTES_W     : integer := 2;
-            BYTES_R     : integer := 4
-    );
     Port ( 
             clk         : in std_logic;
             reset       : in std_logic;
@@ -34,7 +30,10 @@ entity I2C_state is
             ack_s       : out std_logic;
             stop_sda    : out std_logic;
             zero_sda    : out std_logic;
-            reading     : out std_logic       
+            reading     : out std_logic;
+            condition   : out std_logic;
+            BYTES_W     : in std_logic_vector(3 downto 0);
+            BYTES_R     : in std_logic_vector(3 downto 0)    
     );
 end I2C_state;
 
@@ -43,8 +42,8 @@ architecture Behavioral of I2C_state is
     signal FSM  : std_logic_vector(3 downto 0);
     signal final_scl, stop_scl_aux, stop_count_aux, save, final_count, s_ack  : std_logic;
     signal cont : unsigned (2 downto 0);
-    signal byte_w   : integer range 0 to BYTES_W;
-    signal byte_r   : integer range 0 to BYTES_R;
+    signal byte_w   : integer range 0 to to_integer(unsigned(BYTES_W));
+    signal byte_r   : integer range 0 to to_integer(unsigned(BYTES_R));
     
 begin
 
@@ -64,6 +63,7 @@ begin
             byte_r      <= 0;
             cont <= (others => '0');
             DONE <= '1';
+            condition <= '0';
         elsif clk'event and clk = '1' then
                 if FSM = "0000" then
                     stop_count_aux <= '1';
@@ -76,7 +76,8 @@ begin
                     byte_w      <= 0;
                     byte_r      <= 0; 
                     cont <= (others => '0');
-                    DONE <= '1';                   
+                    DONE <= '0';   
+                    condition <= '0';                
                     if START = '1' then
                         FSM <= "0001";
                     end if;
@@ -90,7 +91,8 @@ begin
                     zero_sda    <= '1';
                     cont <= (others => '0');
                     DONE <= '0';
-                    if final_scl = '1' then
+                    condition <= '1';
+                    if (overflow = '1' and div = "01") then
                         FSM <= "0010";
                     end if;
                 elsif FSM = "0010" then
@@ -102,6 +104,7 @@ begin
                     stop_sda    <= '0';
                     zero_sda    <= '0';
                     DONE <= '0';
+                    condition <= '0';
                     if final_scl = '1' then
                         if cont = "111" then
                             FSM <= "0011";
@@ -118,7 +121,8 @@ begin
                     stop_sda    <= '0';
                     zero_sda    <= '0'; 
                     cont <= (others => '0');
-                    DONE <= '0';                   
+                    DONE <= '0';        
+                    condition <= '0';           
                     if final_scl = '1' then
                         if SDA = '1' then
                             FSM <= "0111";
@@ -136,7 +140,8 @@ begin
                     s_ack       <= '0';
                     stop_sda    <= '0';
                     zero_sda    <= '0'; 
-                    DONE <= '0';                   
+                    DONE <= '0';       
+                    condition <= '0';            
                     if final_scl = '1' then
                         if cont = "111" then
                             byte_w      <= byte_w + 1;
@@ -153,7 +158,8 @@ begin
                     s_ack       <= '0';
                     stop_sda    <= '0';
                     zero_sda    <= '0';  
-                    DONE <= '0';                
+                    DONE <= '0';     
+                    condition <= '0';           
                     if final_scl = '1' then
                         if cont = "111" then
                             byte_r      <= byte_r + 1;
@@ -167,10 +173,11 @@ begin
                     stop_sda    <= '0';
                     zero_sda    <= '0';
                     cont <= (others => '0');
+                    condition <= '0';
                     if R_W = '0' then 
                         sipo        <= '1';
                         piso        <= '0';
-                        if byte_w = BYTES_W then
+                        if byte_w = to_integer(unsigned(BYTES_W)) then
                             DONE <= '1';
                         else
                             DONE <= '0';
@@ -178,7 +185,7 @@ begin
                     else
                         sipo        <= '0';
                         piso        <= '1';
-                        if byte_r = BYTES_R then
+                        if byte_r = to_integer(unsigned(BYTES_R)) then
                             DONE <= '1';
                         else
                             DONE <= '0';
@@ -189,10 +196,10 @@ begin
                         if SDA = '1' then
                             FSM <= "0111";
                             stop_scl_aux <= '1';
-                        elsif R_W = '0' and byte_w < BYTES_W then
+                        elsif R_W = '0' and byte_w < to_integer(unsigned(BYTES_W)) then
                             FSM <= "0100";
-                        elsif R_W = '1' and byte_r < BYTES_R then
-                            FSM <= "0101";
+                        elsif R_W = '1' and byte_r < to_integer(unsigned(BYTES_R)) then
+                            FSM <= "0111";
                         else
                             byte_w <= 0;
                             byte_r <= 0;
@@ -202,7 +209,21 @@ begin
                     else
                         stop_scl_aux <= '0';
                     end if; 
-                elsif FSM = "0111" then
+                elsif FSM = "0111" then    
+                    stop_count_aux <= '0';
+                    stop_scl_aux <= '0'; 
+                    sipo        <= '0';
+                    piso        <= '0';
+                    s_ack       <= '0';
+                    stop_sda    <= '0';
+                    zero_sda    <= '1';
+                    cont <= (others => '0');
+                    DONE <= '1';
+                    condition <= '1';
+                    if (overflow = '1' and div = "01") then
+                        FSM <= "1000";
+                    end if;                   
+                elsif FSM = "1000" then
                     stop_count_aux <= '0';
                     stop_scl_aux <= '1'; 
                     sipo        <= '0';
@@ -212,10 +233,11 @@ begin
                     zero_sda    <= '1';
                     cont <= (others => '0');
                     DONE <= '1';
-                    if final_scl = '1' then
-                        FSM <= "1000";
+                    condition <= '1';
+                    if (overflow = '1' and div = "01") then
+                        FSM <= "1001";
                     end if;                                                                                             
-                elsif FSM = "1000" then
+                elsif FSM = "1001" then
                     stop_count_aux <= '0';
                     stop_scl_aux <= '1'; 
                     sipo        <= '0';
@@ -225,6 +247,7 @@ begin
                     zero_sda    <= '0';
                     cont <= (others => '0');
                     DONE <= '1';
+                    condition <= '0';
                     if final_scl = '1' then
                         FSM <= "0000";
                     end if;                                                                                            
